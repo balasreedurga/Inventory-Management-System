@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import Table from '../components/Table';
-import { getLowStockProductIds } from '../features/lowStockAlert';
+import { getLowStockProductIds, generateLowStockAlert } from '/src/features/lowStockAlert';
 
 function Inventory() {
   // This would normally come from your backend
@@ -17,6 +17,9 @@ function Inventory() {
     setLowStockProductIds(ids); // Update state with low-stock product IDs
   }, [products]); // Run whenever `products` changes
 
+  // Generate low stock alert
+  const alertMessage = generateLowStockAlert(lowStockProductIds);
+
   const headers = ['Name', 'SKU', 'Price', 'Quantity', 'Reorder Point', 'Status'];
 
   const isLowStock = (quantity, reorderPoint) => quantity <= reorderPoint;
@@ -31,6 +34,11 @@ function Inventory() {
         >
           Add New Product
         </button>
+      </div>
+
+      {/* Low Stock Alert */}
+      <div className="alert alert-warning bg-yellow-100 text-yellow-800 p-4 rounded">
+        {alertMessage}
       </div>
 
       <Table headers={headers}>

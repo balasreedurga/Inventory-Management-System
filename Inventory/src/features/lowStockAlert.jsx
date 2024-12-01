@@ -18,8 +18,11 @@ export function getLowStockProductIds(products, reorderPoint) {
    */
   export function generateLowStockAlert(lowStockProducts) {
     if (lowStockProducts.length === 0) return "All products are adequately stocked.";
-    return `Low Stock Alert: The following products are low in stock: ${lowStockProducts
-      .map(product => product.name)
-      .join(', ')}.`;
+    
+    // Extract product IDs and join them in the alert message
+    const lowStockProductIds = lowStockProducts.map(product => product.id);
+    
+    return `Low Stock Alert: The following product IDs are low in stock: ${lowStockProductIds.join(', ')}.`;
   }
+  
   
