@@ -1,12 +1,15 @@
 /**
- * Identifies products that are low in stock.
+ * Identifies product IDs that are low in stock.
  * @param {Array} products - List of product objects.
  * @param {number} reorderPoint - The threshold below which stock is considered low.
- * @returns {Array} - List of low-stock product objects.
+ * @returns {Array} - List of low-stock product IDs.
  */
-export function getLowStockProducts(products, reorderPoint) {
-    return products.filter(product => product.quantity < (product.reorderPoint || reorderPoint));
-  }
+export function getLowStockProductIds(products, reorderPoint) {
+  return products
+    .filter(product => product.quantity < (product.reorderPoint || reorderPoint))
+    .map(product => product.id); // Extracting only the IDs
+}
+
   
   /**
    * Generates an alert message for low-stock products.

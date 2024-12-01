@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Table from '../components/Table';
+import { getLowStockProductIds } from '../features/lowStockAlert';
 
 function Inventory() {
   // This would normally come from your backend
@@ -7,6 +8,14 @@ function Inventory() {
     { id: 1, name: 'Product 1', sku: 'SKU001', price: 29.99, quantity: 5, reorderPoint: 10 },
     { id: 2, name: 'Product 2', sku: 'SKU002', price: 39.99, quantity: 15, reorderPoint: 8 },
   ]);
+
+  const [lowStockProductIds, setLowStockProductIds] = useState([]);
+
+  // Check for low stock when products load
+  useEffect(() => {
+    const ids = getLowStockProductIds(products);
+    setLowStockProductIds(ids); // Update state with low-stock product IDs
+  }, [products]); // Run whenever `products` changes
 
   const headers = ['Name', 'SKU', 'Price', 'Quantity', 'Reorder Point', 'Status'];
 
