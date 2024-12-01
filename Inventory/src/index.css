@@ -1,3 +1,8 @@
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 :root {
   font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;
@@ -27,7 +32,11 @@ body {
   display: flex;
   place-items: center;
   min-width: 320px;
-  min-height: 100vh;
+  min-height: 100vh;background-color:rgb(185, 174, 216) ;
+  background-image: url('/src/assets/bg7.jpeg');
+  background-size: cover;
+   background-position: center;
+   background-repeat: no-repeat;
 }
 
 h1 {
