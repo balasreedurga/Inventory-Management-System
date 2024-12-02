@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { validateProductInput } from '../features/inputValidation'
 
 function AddProduct() {
   const [formData, setFormData] = useState({
@@ -17,40 +18,45 @@ function AddProduct() {
       ...prev,
       [name]: value
     }));
-    // Clear error when user starts typing
-    if (errors[name]) {
-      setErrors(prev => ({
-        ...prev,
-        [name]: ''
-      }));
-    }
+
+    // Validate input on change
+    const errorMessage = validateProductInput(name, value);
+    setErrors((prev) => ({
+      ...prev,
+      [name]: errorMessage
+    }));
   };
 
   const validateForm = () => {
     const newErrors = {};
-    if (!formData.name) newErrors.name = 'Name is required';
-    if (!formData.sku) newErrors.sku = 'SKU is required';
-    if (!formData.price || formData.price <= 0) newErrors.price = 'Valid price is required';
-    if (!formData.quantity || formData.quantity < 0) newErrors.quantity = 'Valid quantity is required';
-    if (!formData.reorderPoint || formData.reorderPoint < 0) newErrors.reorderPoint = 'Valid reorder point is required';
-    
+    Object.keys(formData).forEach((field) => {
+      const errorMessage = validateProductInput(field, formData[field]);
+      if (errorMessage) {
+        newErrors[field] = errorMessage;
+      }
+    });
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (validateForm()) {
-      // This would normally call your backend API
-      console.log('Form submitted:', formData);
-      // Reset form after successful submission
-      setFormData({
-        name: '',
-        sku: '',
-        price: '',
-        quantity: '',
-        reorderPoint: ''
-      });
+      try {
+        console.log('Form submitted:', formData);
+        // Reset form after successful submission
+        setFormData({
+          name: '',
+          sku: '',
+          price: '',
+          quantity: '',
+          reorderPoint: ''
+        });
+        setErrors({});
+      } catch (error) {
+        console.error('Error adding product:', error);
+      }
     }
   };
 
