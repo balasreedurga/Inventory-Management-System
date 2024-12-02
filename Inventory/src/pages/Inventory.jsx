@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import Table from '../components/Table';
-import { getLowStockProductIds, generateLowStockAlert } from '/src/features/lowStockAlert';
+//import { getLowStockProductIds, generateLowStockAlert } from '/src/features/lowStockAlert';
+import { generateLowStockAlert } from '/src/features/lowStockAlert';
 
 function Inventory() {
   // This would normally come from your backend
@@ -9,16 +10,30 @@ function Inventory() {
     { id: 2, name: 'Product 2', sku: 'SKU002', price: 39.99, quantity: 15, reorderPoint: 8 },
   ]);
 
-  const [lowStockProductIds, setLowStockProductIds] = useState([]);
+  console.log(products);
 
-  // Check for low stock when products load
+  const [lowStockProductIds, setLowStockProductIds] = useState([]);
+  const [alertMessage, setAlertMessage] = useState("");
+
   useEffect(() => {
-    const ids = getLowStockProductIds(products);
-    setLowStockProductIds(ids); // Update state with low-stock product IDs
-  }, [products]); // Run whenever `products` changes
+    console.log("Products:", products);
+    const lowStockProducts = products.filter(product => product.quantity < (product.reorderPoint || 0));
+    const ids = lowStockProducts.map(product => product.id);
+    //const ids = getLowStockProductIds(products);
+    console.log("Low Stock Product IDs:", ids);
+    // console.log(ids[0])
+    const message = generateLowStockAlert(lowStockProducts);
+    //const alertMessage = generateLowStockAlert(ids);
+    console.log("Alert Message:", message);
+    
+    setLowStockProductIds(ids);
+    setAlertMessage(message);
+  }, [products]);
 
   // Generate low stock alert
-  const alertMessage = generateLowStockAlert(lowStockProductIds);
+  //const alertMessage = generateLowStockAlert(lowStockProductIds);
+
+  //console.log(`lowStockProductIds : ${lowStockProductIds}`);
 
   const headers = ['Name', 'SKU', 'Price', 'Quantity', 'Reorder Point', 'Status'];
 
