@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { getFirestore, collection, getDocs, updateDoc, doc } from "firebase/firestore"; // Include updateDoc and doc for updates
 import Table from "../components/Table";
@@ -8,9 +7,14 @@ function Inventory() {
   const [products, setProducts] = useState([]);
   const headers = ["Name", "SKU", "Price", "Quantity", "Reorder Point", "Status"];
 
-
-  // Determine stock status
+  // Move isLowStock function before its usage
   const isLowStock = (quantity, reorderPoint) => quantity <= reorderPoint;
+
+  // Now we can use isLowStock in alertMessage
+  const alertMessage = products
+    .filter((product) => isLowStock(product.quantity, product.reorderPoint))
+    .map((product) => product.name)
+    .join(", ");
 
   useEffect(() => {
     // Fetch products from Firestore
@@ -65,10 +69,12 @@ function Inventory() {
         </button>
       </div>
 
-      {/* Low Stock Alert */}
-      <div className="alert alert-warning bg-yellow-100 text-yellow-800 p-4 rounded">
-        {alertMessage}
-      </div>
+      {/* Update the alert div to only show when there are low stock items */}
+      {alertMessage && (
+        <div className="alert alert-warning bg-yellow-100 text-yellow-800 p-4 rounded">
+          Low stock alert for: {alertMessage}
+        </div>
+      )}
 
       <Table headers={headers}>
         {products.map((product) => (

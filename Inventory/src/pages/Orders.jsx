@@ -160,11 +160,12 @@ function Orders() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
       {/* Add Order Form */}
       <h2 className="text-2xl font-bold text-gray-900">Create New Order</h2>
       <form onSubmit={handleAddOrder} className="space-y-6">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+          {/* Customer Name Input */}
           <div>
             <label className="block text-sm font-medium text-gray-700">Customer Name</label>
             <input
@@ -180,7 +181,7 @@ function Orders() {
           <div>
             <label className="block text-sm font-medium text-gray-700">Add Product</label>
             <select
-              onChange={(e) => handleAddItemToOrder(e.target.value, 1)} // Default quantity is 1
+              onChange={(e) => handleAddItemToOrder(e.target.value, 1)}
               className="mt-1 w-full p-2 border border-gray-300 rounded-md shadow-sm"
             >
               <option value="">Select a Product</option>
@@ -191,89 +192,94 @@ function Orders() {
           </div>
         </div>
 
-        {/* Items List */}
         <div>
           <h3 className="text-lg font-medium text-gray-900">Order Items</h3>
-          <div className="space-y-4 mt-4">
+          <div className="space-y-4 mt-4 max-h-[300px] overflow-y-auto">
             {newOrder.productNames.map((item, index) => {
               const product = productList.find(p => p.name === item.name) || {};
               return (
-                <div key={index} className="flex justify-between items-center p-4 border border-gray-200 rounded-md">
-                  <span>{product.name || 'Product not found'}</span>
-                  <input
-                    type="number"
-                    value={item.quantity}
-                    onChange={(e) => handleQuantityChange(item.name, e.target.value)}
-                    className="w-20 p-2 border border-gray-300 rounded-md"
-                  />
-                  <span>${(product.price * item.quantity).toFixed(2)}</span>
+                <div key={index} className="flex flex-col sm:flex-row justify-between items-start sm:items-center p-4 border border-gray-200 rounded-md space-y-2 sm:space-y-0">
+                  <span className="text-sm sm:text-base">{product.name || 'Product not found'}</span>
+                  <div className="flex items-center space-x-4 w-full sm:w-auto justify-between sm:justify-end">
+                    <input
+                      type="number"
+                      value={item.quantity}
+                      onChange={(e) => handleQuantityChange(item.name, e.target.value)}
+                      className="w-20 p-2 border border-gray-300 rounded-md"
+                    />
+                    <span className="text-sm sm:text-base">${(product.price * item.quantity).toFixed(2)}</span>
+                  </div>
                 </div>
               );
             })}
           </div>
         </div>
 
-        {/* Order Total */}
-        <div className="mt-6">
+        <div className="mt-6 max-w-sm mx-auto sm:max-w-none">
           <label className="block text-sm font-medium text-gray-700">Total</label>
           <input
             type="text"
             value={newOrder.total}
             readOnly
-            className="mt-1 w-full p-2 border border-gray-300 rounded-md bg-gray-200"
+            className="mt-1 w-full sm:w-48 p-2 border border-gray-300 rounded-md bg-gray-200"
           />
         </div>
 
         <div className="mt-6">
           <button
             type="submit"
-            className="w-full bg-blue-600 text-white py-3 rounded-md hover:bg-blue-700 focus:outline-none"
+            className="w-full sm:w-auto px-6 bg-blue-600 text-white py-3 rounded-md hover:bg-blue-700 focus:outline-none"
           >
             Create Order
           </button>
         </div>
       </form>
 
-      {/* Orders Table */}
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Orders</h1>
-        <select
-          value={filter}
-          onChange={(e) => setFilter(e.target.value)}
-          className="rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 mt-4"
-        >
-          <option value="all">All Orders</option>
-          <option value="pending">Pending</option>
-          <option value="fulfilled">Fulfilled</option>
-        </select>
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
+          <h1 className="text-2xl font-bold text-gray-900">Orders</h1>
+          <select
+            value={filter}
+            onChange={(e) => setFilter(e.target.value)}
+            className="w-full sm:w-auto rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+          >
+            <option value="all">All Orders</option>
+            <option value="pending">Pending</option>
+            <option value="fulfilled">Fulfilled</option>
+          </select>
+        </div>
 
-        <Table headers={headers}>
-          {filteredOrders.map((order) => {
-            const uniqueKey = `${(order.productNames && order.productNames.join('-')) || ''}-${order.customer}`;
-            return (
-              <tr key={uniqueKey}>
-                <td className="px-6 py-4 whitespace-nowrap">{order.id}</td>
-                <td className="px-6 py-4 whitespace-nowrap">{new Date(order.date).toLocaleString()}</td>
-                <td className="px-6 py-4 whitespace-nowrap">{order.customer}</td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  {order.productNames ? order.productNames.join(', ') : 'No products'}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">${order.total}</td>
-                <td className="px-6 py-4 whitespace-nowrap">{order.status}</td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  {order.status === 'pending' && (
-                    <button
-                      className="text-white bg-blue-600 py-1 px-3 rounded-md hover:bg-blue-700"
-                      onClick={() => handleMarkAsFulfilled(order.id, order.productNames)}
-                    >
-                      Mark as Fulfilled
-                    </button>
-                  )}
-                </td>
-              </tr>
-            );
-          })}
-        </Table>
+        <div className="mt-4 -mx-4 sm:mx-0 overflow-x-auto">
+          <div className="inline-block min-w-full align-middle">
+            <Table headers={headers}>
+              {filteredOrders.map((order) => {
+                const uniqueKey = `${(order.productNames && order.productNames.join('-')) || ''}-${order.customer}`;
+                return (
+                  <tr key={uniqueKey}>
+                    <td className="px-6 py-4 whitespace-nowrap">{order.id}</td>
+                    <td className="px-6 py-4 whitespace-nowrap">{new Date(order.date).toLocaleString()}</td>
+                    <td className="px-6 py-4 whitespace-nowrap">{order.customer}</td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      {order.productNames ? order.productNames.join(', ') : 'No products'}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">${order.total}</td>
+                    <td className="px-6 py-4 whitespace-nowrap">{order.status}</td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      {order.status === 'pending' && (
+                        <button
+                          className="text-white bg-blue-600 py-1 px-3 rounded-md hover:bg-blue-700"
+                          onClick={() => handleMarkAsFulfilled(order.id, order.productNames)}
+                        >
+                          Mark as Fulfilled
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
+            </Table>
+          </div>
+        </div>
       </div>
     </div>
   );
