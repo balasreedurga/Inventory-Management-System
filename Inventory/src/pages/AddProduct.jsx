@@ -1,8 +1,10 @@
 import { useState, useEffect } from "react";
 import { getProducts, addProduct, updateProduct } from "../backend/products";
 import { PencilIcon, CurrencyEuroIcon, TagIcon, ArchiveBoxIcon, ArrowPathIcon } from '@heroicons/react/24/outline';
+import { validateProductInput } from '../features/inputValidation'
 
-function AddProduct() {
+function AddProduct( { existingSkus } ) {
+  console.log(`inside add product : existingSkus : ${existingSkus}`)
   const [formData, setFormData] = useState({
     name: "",
     sku: "",
@@ -28,22 +30,12 @@ function AddProduct() {
   // Validate form inputs
   const validateForm = () => {
     const newErrors = {};
-
-    if (!formData.name) newErrors.name = "Product name is required.";
-    if (!formData.sku) newErrors.sku = "SKU is required.";
-    if (!formData.price || formData.price <= 0)
-      newErrors.price = "Price must be greater than zero.";
-    if (!formData.quantity || formData.quantity < 0)
-      newErrors.quantity = "Quantity cannot be negative.";
-    if (!formData.reorderPoint || formData.reorderPoint < 0)
-      newErrors.reorderPoint = "Reorder point cannot be negative.";
-
-    if (
-      !editMode &&
-      products.some((product) => product.sku === formData.sku)
-    ) {
-      newErrors.sku = "SKU must be unique.";
-    }
+    Object.keys(formData).forEach((field) => {
+      const errorMessage = validateProductInput(field, formData[field], existingSkus);
+      if (errorMessage) {
+        newErrors[field] = errorMessage;
+      }
+    });
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
