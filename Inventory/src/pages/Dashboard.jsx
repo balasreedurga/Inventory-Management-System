@@ -1,37 +1,68 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { getFirestore, collection, query, where, onSnapshot } from 'firebase/firestore';
 
 function Dashboard() {
   const navigate = useNavigate();
   const [stats, setStats] = useState({
-    totalProducts: 150,
-    lowStock: 12,
-    totalOrders: 45,
-    pendingOrders: 8,
+    totalProducts: 0,
+    lowStock: 0,
+    totalOrders: 0,
+    pendingOrders: 0,
+    fulfilledOrders: 0, // New stat for fulfilled orders
   });
+  const [recentActivity, setRecentActivity] = useState([]);
+  const db = getFirestore();
 
-  const [recentActivity, setRecentActivity] = useState([
-    { id: 1, type: 'order', message: 'New order #1234 received', time: '2 hours ago' },
-    { id: 2, type: 'stock', message: 'Low stock alert: Product XYZ', time: '3 hours ago' },
-    { id: 3, type: 'product', message: 'New product added: ABC', time: '5 hours ago' },
-  ]);
+  // Define stock threshold for low stock
+  const lowStockThreshold = 10;
 
   useEffect(() => {
-    // Fetch dashboard data
-    const fetchDashboardData = async () => {
-      try {
-        // This would normally be an API call
-        // const response = await fetch('/api/dashboard');
-        // const data = await response.json();
-        // setStats(data.stats);
-        // setRecentActivity(data.recentActivity);
-      } catch (error) {
-        console.error('Error fetching dashboard data:', error);
-      }
-    };
+    // Fetch Products data with realtime updates
+    const fetchProducts = onSnapshot(collection(db, 'products'), (snapshot) => {
+      const products = snapshot.docs.map(doc => doc.data());
+      const totalProducts = products.length;
+      const lowStockItems = products.filter(product => product.quantity <= lowStockThreshold).length;
 
-    fetchDashboardData();
-  }, []);
+      setStats(prevStats => ({
+        ...prevStats,
+        totalProducts,
+        lowStock: lowStockItems,
+      }));
+    });
+
+    // Fetch Orders data with realtime updates
+    const fetchOrders = onSnapshot(collection(db, 'orders'), (snapshot) => {
+      const orders = snapshot.docs.map(doc => doc.data());
+      const totalOrders = orders.length;
+      const pendingOrders = orders.filter(order => order.status === 'pending').length;
+      const fulfilledOrders = orders.filter(order => order.status === 'fulfilled').length;
+
+      // Update the stats with orders data
+      setStats(prevStats => ({
+        ...prevStats,
+        totalOrders,
+        pendingOrders,
+        fulfilledOrders,
+      }));
+
+      // Update recent activity with the latest orders
+      const recentOrders = orders.slice(0, 5); // Get the 5 most recent orders
+      const recentActivities = recentOrders.map(order => ({
+        id: order.id,
+        message: `${order.customer} ${order.status === 'pending' ? 'placed' : 'fulfilled'} an order`,
+        time: new Date(order.date).toLocaleString(),
+      }));
+
+      setRecentActivity(recentActivities);
+    });
+
+    // Cleanup listeners when the component is unmounted
+    return () => {
+      fetchProducts(); // Unsubscribe from products collection
+      fetchOrders();   // Unsubscribe from orders collection
+    };
+  }, [db]);
 
   const handleCardClick = (route) => {
     navigate(route);
@@ -74,6 +105,14 @@ function Dashboard() {
           <h3 className="text-gray-500 text-sm">Pending Orders</h3>
           <p className="text-2xl font-bold text-orange-600">{stats.pendingOrders}</p>
         </div>
+
+        <div 
+          className="bg-white p-6 rounded-lg shadow cursor-pointer hover:shadow-lg transition-shadow"
+          onClick={() => handleCardClick('/orders')}
+        >
+          <h3 className="text-gray-500 text-sm">Fulfilled Orders</h3>
+          <p className="text-2xl font-bold text-green-600">{stats.fulfilledOrders}</p>
+        </div>
       </div>
 
       {/* Recent Activity */}
@@ -95,3 +134,4 @@ function Dashboard() {
 }
 
 export default Dashboard;
+

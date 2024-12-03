@@ -1,10 +1,13 @@
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { useState } from 'react';
+import logo from '../assets/logo.png';
 
 function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
+  const location = useLocation();
 
   const navItems = [
+    { path: '/', label: 'Home' },
     { path: '/dashboard', label: 'Dashboard' },
     { path: '/inventory', label: 'Inventory' },
     { path: '/add-product', label: 'Add Product' },
@@ -12,23 +15,40 @@ function Navbar() {
     { path: '/orders', label: 'Orders' },
   ];
 
+  const isActive = (path) => {
+    if (path === '/' && location.pathname === '/') {
+      return true;
+    }
+    return location.pathname === path;
+  };
+
   return (
     <nav className="bg-white shadow-lg">
       <div className="max-w-7xl mx-auto px-4">
         <div className="flex justify-between h-16">
-          <div className="flex items-center">
-            <Link to="/" className="text-xl font-bold text-gray-800">
-              Inventory Manager
+          {/* Logo Section with Custom Image */}
+          <div className="flex items-center flex-shrink-0 mr-10">
+            <Link to="/" className="flex items-center space-x-2 text-xl font-bold text-gray-800 hover:text-gray-600 transition-colors duration-200">
+              <img 
+                src={'./src/assets/logo.png'} 
+                alt="Inventory Manager Logo" 
+                className="h-10 w-auto object-contain"
+              />
+              <span>Inventory Manager</span>
             </Link>
           </div>
           
           {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center space-x-4">
+          <div className="hidden md:flex items-center justify-end flex-grow space-x-6">
             {navItems.map((item) => (
               <Link
                 key={item.path}
                 to={item.path}
-                className="px-3 py-2 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-100"
+                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors duration-200 ${
+                  isActive(item.path)
+                    ? 'bg-gray-900 text-white'
+                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                }`}
               >
                 {item.label}
               </Link>
@@ -40,6 +60,7 @@ function Navbar() {
             <button
               onClick={() => setIsOpen(!isOpen)}
               className="inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100"
+              aria-expanded={isOpen}
             >
               <span className="sr-only">Open main menu</span>
               {/* Hamburger icon */}
@@ -74,7 +95,11 @@ function Navbar() {
             <Link
               key={item.path}
               to={item.path}
-              className="block px-3 py-2 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-100"
+              className={`block px-3 py-2 rounded-md text-base font-medium ${
+                isActive(item.path)
+                  ? 'bg-gray-900 text-white'
+                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+              }`}
               onClick={() => setIsOpen(false)}
             >
               {item.label}

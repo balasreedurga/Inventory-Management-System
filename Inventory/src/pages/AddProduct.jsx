@@ -1,139 +1,221 @@
-import { useState } from 'react';
-import { validateProductInput } from '../features/inputValidation'
+import { useState, useEffect } from "react";
+import { getProducts, addProduct, updateProduct } from "../backend/products";
+import { PencilIcon, CurrencyEuroIcon, TagIcon, ArchiveBoxIcon, ArrowPathIcon } from '@heroicons/react/24/outline';
 
 function AddProduct() {
   const [formData, setFormData] = useState({
-    name: '',
-    sku: '',
-    price: '',
-    quantity: '',
-    reorderPoint: ''
+    name: "",
+    sku: "",
+    price: "",
+    quantity: "",
+    reorderPoint: "",
   });
 
+  const [products, setProducts] = useState([]);
   const [errors, setErrors] = useState({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [editMode, setEditMode] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState(null);
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
+  // Fetch products in real-time
+  useEffect(() => {
+    const unsubscribe = getProducts((data) => {
+      setProducts(data);
+    });
+    return () => unsubscribe();
+  }, []);
 
-    // Validate input on change
-    const errorMessage = validateProductInput(name, value);
-    setErrors((prev) => ({
-      ...prev,
-      [name]: errorMessage
-    }));
-  };
-
+  // Validate form inputs
   const validateForm = () => {
     const newErrors = {};
-    Object.keys(formData).forEach((field) => {
-      const errorMessage = validateProductInput(field, formData[field]);
-      if (errorMessage) {
-        newErrors[field] = errorMessage;
-      }
-    });
+
+    if (!formData.name) newErrors.name = "Product name is required.";
+    if (!formData.sku) newErrors.sku = "SKU is required.";
+    if (!formData.price || formData.price <= 0)
+      newErrors.price = "Price must be greater than zero.";
+    if (!formData.quantity || formData.quantity < 0)
+      newErrors.quantity = "Quantity cannot be negative.";
+    if (!formData.reorderPoint || formData.reorderPoint < 0)
+      newErrors.reorderPoint = "Reorder point cannot be negative.";
+
+    if (
+      !editMode &&
+      products.some((product) => product.sku === formData.sku)
+    ) {
+      newErrors.sku = "SKU must be unique.";
+    }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
+  // Handle form field change
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+    if (errors[name]) {
+      setErrors((prev) => ({
+        ...prev,
+        [name]: "",
+      }));
+    }
+  };
+
+  // Handle product editing
+  const handleEdit = (product) => {
+    setEditMode(true);
+    setSelectedProduct(product);
+    setFormData({
+      name: product.name,
+      sku: product.sku,
+      price: product.price.toString(),
+      quantity: product.quantity.toString(),
+      reorderPoint: product.reorderPoint.toString(),
+    });
+  };
+
+  // Reset form after adding/updating a product
+  const resetForm = () => {
+    setFormData({
+      name: "",
+      sku: "",
+      price: "",
+      quantity: "",
+      reorderPoint: "",
+    });
+    setEditMode(false);
+    setSelectedProduct(null);
+    setErrors({});
+  };
+
+  // Handle form submission
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (validateForm()) {
-      try {
-        console.log('Form submitted:', formData);
-        // Reset form after successful submission
-        setFormData({
-          name: '',
-          sku: '',
-          price: '',
-          quantity: '',
-          reorderPoint: ''
-        });
-        setErrors({});
-      } catch (error) {
-        console.error('Error adding product:', error);
+
+    if (!validateForm()) return;
+
+    setIsSubmitting(true);
+
+    try {
+      const updatedProductData = {
+        name: formData.name,
+        sku: formData.sku,
+        price: parseFloat(formData.price),
+        quantity: parseInt(formData.quantity, 10),
+        reorderPoint: parseInt(formData.reorderPoint, 10),
+      };
+
+      if (editMode) {
+        
+        await updateProduct(formData.sku, updatedProductData);
+        console.log("Product updated successfully!");
+      } else {
+        await addProduct(updatedProductData);
+        console.log("Product added successfully!");
       }
+
+      resetForm();
+    } catch (error) {
+      console.error("Error saving product:", error.message);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   return (
-    <div className="max-w-2xl mx-auto">
-      <h1 className="text-2xl font-bold text-gray-900 mb-6">Add New Product</h1>
-      
+    <div className="container mx-auto max-w-2xl">
+      <h1 className="text-2xl font-bold text-gray-900 mb-6">
+        {editMode ? "Edit Product" : "Add New Product"}
+      </h1>
+
       <form onSubmit={handleSubmit} className="space-y-6">
         <div>
-          <label className="block text-sm font-medium text-gray-700">Product Name</label>
+          <label htmlFor="name" className="block text-sm font-medium text-gray-700">
+            Product Name
+          </label>
           <input
             type="text"
             name="name"
+            id="name"
             value={formData.name}
             onChange={handleChange}
             className={`mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 ${
-              errors.name ? 'border-red-500' : ''
+              errors.name ? "border-red-500" : ""
             }`}
           />
           {errors.name && <p className="mt-1 text-sm text-red-600">{errors.name}</p>}
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700">SKU</label>
+          <label htmlFor="sku" className="block text-sm font-medium text-gray-700">
+            SKU
+          </label>
           <input
             type="text"
             name="sku"
+            id="sku"
             value={formData.sku}
             onChange={handleChange}
             className={`mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 ${
-              errors.sku ? 'border-red-500' : ''
+              errors.sku ? "border-red-500" : ""
             }`}
           />
           {errors.sku && <p className="mt-1 text-sm text-red-600">{errors.sku}</p>}
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700">Price</label>
+          <label htmlFor="price" className="block text-sm font-medium text-gray-700">
+            Price
+          </label>
           <input
             type="number"
             name="price"
+            id="price"
             value={formData.price}
             onChange={handleChange}
-            step="0.01"
             min="0"
+            step="0.01"
             className={`mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 ${
-              errors.price ? 'border-red-500' : ''
+              errors.price ? "border-red-500" : ""
             }`}
           />
           {errors.price && <p className="mt-1 text-sm text-red-600">{errors.price}</p>}
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700">Quantity</label>
+          <label htmlFor="quantity" className="block text-sm font-medium text-gray-700">
+            Quantity
+          </label>
           <input
             type="number"
             name="quantity"
+            id="quantity"
             value={formData.quantity}
             onChange={handleChange}
             min="0"
             className={`mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 ${
-              errors.quantity ? 'border-red-500' : ''
+              errors.quantity ? "border-red-500" : ""
             }`}
           />
           {errors.quantity && <p className="mt-1 text-sm text-red-600">{errors.quantity}</p>}
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700">Reorder Point</label>
+          <label htmlFor="reorderPoint" className="block text-sm font-medium text-gray-700">
+            Reorder Point
+          </label>
           <input
             type="number"
             name="reorderPoint"
+            id="reorderPoint"
             value={formData.reorderPoint}
             onChange={handleChange}
             min="0"
             className={`mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 ${
-              errors.reorderPoint ? 'border-red-500' : ''
+              errors.reorderPoint ? "border-red-500" : ""
             }`}
           />
           {errors.reorderPoint && <p className="mt-1 text-sm text-red-600">{errors.reorderPoint}</p>}
@@ -142,12 +224,70 @@ function AddProduct() {
         <div className="flex justify-end">
           <button
             type="submit"
-            className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
+            className={`bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 ${
+              isSubmitting ? "opacity-50 cursor-not-allowed" : ""
+            }`}
+            disabled={isSubmitting}
           >
-            Add Product
+            {isSubmitting
+              ? "Saving..."
+              : editMode
+              ? "Save Changes"
+              : "Add Product"}
           </button>
         </div>
       </form>
+
+      {/* List of Products */}
+      <div className="mt-8">
+        <h2 className="text-xl font-bold text-gray-900 mb-6">Products</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {products.map((product) => (
+            <div
+              key={product.sku}
+              className="bg-white p-4 rounded-lg shadow-md border border-gray-200 hover:shadow-lg transition-shadow"
+            >
+              <div className="flex justify-between items-start mb-4">
+                <h3 className="font-semibold text-lg text-gray-800">{product.name}</h3>
+                <button
+                  onClick={() => handleEdit(product)}
+                  className="p-1 text-gray-600 hover:text-green-600 transition-colors"
+                >
+                  <PencilIcon className="h-5 w-5" />
+                </button>
+              </div>
+              
+              <div className="space-y-2">
+                <div className="flex items-center text-gray-600">
+                  <TagIcon className="h-5 w-5 mr-2" />
+                  <span className="text-sm">SKU: {product.sku}</span>
+                </div>
+                
+                <div className="flex items-center text-gray-600">
+                  <CurrencyEuroIcon className="h-5 w-5 mr-2" />
+                  <span className="text-sm">€{parseFloat(product.price).toFixed(2)}</span>
+                </div>
+                
+                <div className="flex items-center text-gray-600">
+                  <ArchiveBoxIcon className="h-5 w-5 mr-2" />
+                  <span className="text-sm">Quantity: {product.quantity}</span>
+                </div>
+                
+                <div className="flex items-center text-gray-600">
+                  <ArrowPathIcon className="h-5 w-5 mr-2" />
+                  <span className="text-sm">Reorder at: {product.reorderPoint}</span>
+                </div>
+              </div>
+              
+              {product.quantity <= product.reorderPoint && (
+                <div className="mt-3 text-red-600 text-sm bg-red-50 p-2 rounded">
+                  Low stock alert! Time to reorder.
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }
