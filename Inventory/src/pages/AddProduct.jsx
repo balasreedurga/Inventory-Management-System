@@ -23,7 +23,7 @@ function AddProduct() {
         ...prev,
         [name]: ''
       }));
-    }
+    }AddProduct
   };
 
   const validateForm = () => {
