@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { getFirestore, collection, getDocs, updateDoc, doc } from "firebase/firestore"; // Include updateDoc and doc for updates
 import Table from "../components/Table";
@@ -6,6 +7,7 @@ function Inventory() {
   const db = getFirestore();
   const [products, setProducts] = useState([]);
   const headers = ["Name", "SKU", "Price", "Quantity", "Reorder Point", "Status"];
+
 
   // Determine stock status
   const isLowStock = (quantity, reorderPoint) => quantity <= reorderPoint;
@@ -61,6 +63,11 @@ function Inventory() {
         >
           Add New Product
         </button>
+      </div>
+
+      {/* Low Stock Alert */}
+      <div className="alert alert-warning bg-yellow-100 text-yellow-800 p-4 rounded">
+        {alertMessage}
       </div>
 
       <Table headers={headers}>
