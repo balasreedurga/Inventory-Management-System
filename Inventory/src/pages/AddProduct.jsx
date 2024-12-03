@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { getProducts, addProduct, updateProduct } from "../backend/products";
+import { PencilIcon, CurrencyEuroIcon, TagIcon, ArchiveBoxIcon, ArrowPathIcon } from '@heroicons/react/24/outline';
 
 function AddProduct() {
   const [formData, setFormData] = useState({
@@ -239,34 +240,53 @@ function AddProduct() {
 
       {/* List of Products */}
       <div className="mt-8">
-        <h2 className="text-xl font-bold text-gray-900">Products</h2>
-        <ul className="mt-4 space-y-4">
+        <h2 className="text-xl font-bold text-gray-900 mb-6">Products</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {products.map((product) => (
-            <li key={product.sku} className="p-4 border rounded-md">
-              <p>
-                <strong>Name:</strong> {product.name}
-              </p>
-              <p>
-                <strong>SKU:</strong> {product.sku}
-              </p>
-              <p>
-        <strong>Price:</strong> €{parseFloat(product.price).toFixed(2)}
-      </p>
-              <p>
-                <strong>Quantity:</strong> {product.quantity}
-              </p>
-              <p>
-                <strong>Reorder Point:</strong> {product.reorderPoint}
-              </p>
-              <button
-                onClick={() => handleEdit(product)}
-                className="mt-2 bg-green-600 text-white px-3 py-1 rounded-md hover:bg-green-700"
-              >
-                Edit
-              </button>
-            </li>
+            <div
+              key={product.sku}
+              className="bg-white p-4 rounded-lg shadow-md border border-gray-200 hover:shadow-lg transition-shadow"
+            >
+              <div className="flex justify-between items-start mb-4">
+                <h3 className="font-semibold text-lg text-gray-800">{product.name}</h3>
+                <button
+                  onClick={() => handleEdit(product)}
+                  className="p-1 text-gray-600 hover:text-green-600 transition-colors"
+                >
+                  <PencilIcon className="h-5 w-5" />
+                </button>
+              </div>
+              
+              <div className="space-y-2">
+                <div className="flex items-center text-gray-600">
+                  <TagIcon className="h-5 w-5 mr-2" />
+                  <span className="text-sm">SKU: {product.sku}</span>
+                </div>
+                
+                <div className="flex items-center text-gray-600">
+                  <CurrencyEuroIcon className="h-5 w-5 mr-2" />
+                  <span className="text-sm">€{parseFloat(product.price).toFixed(2)}</span>
+                </div>
+                
+                <div className="flex items-center text-gray-600">
+                  <ArchiveBoxIcon className="h-5 w-5 mr-2" />
+                  <span className="text-sm">Quantity: {product.quantity}</span>
+                </div>
+                
+                <div className="flex items-center text-gray-600">
+                  <ArrowPathIcon className="h-5 w-5 mr-2" />
+                  <span className="text-sm">Reorder at: {product.reorderPoint}</span>
+                </div>
+              </div>
+              
+              {product.quantity <= product.reorderPoint && (
+                <div className="mt-3 text-red-600 text-sm bg-red-50 p-2 rounded">
+                  Low stock alert! Time to reorder.
+                </div>
+              )}
+            </div>
           ))}
-        </ul>
+        </div>
       </div>
     </div>
   );
