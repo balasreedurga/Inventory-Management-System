@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { getFirestore, collection, getDocs, doc, getDoc, updateDoc } from 'firebase/firestore';
 
 function StockAdjustments() {
   const navigate = useNavigate();
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
-
   const [formData, setFormData] = useState({
     productId: '',
     quantity: '',
@@ -13,37 +13,69 @@ function StockAdjustments() {
     reason: ''
   });
 
+  // Error and Success States
+  const [error, setError] = useState(null);
+  const [successMessage, setSuccessMessage] = useState(null);
+
+  // Initialize Firestore
+  const db = getFirestore();
+
   useEffect(() => {
-    // Fetch products
     const fetchProducts = async () => {
       try {
-        // This would normally be an API call
-        // const response = await fetch('/api/products');
-        // const data = await response.json();
-        setProducts([
-          { id: 1, name: 'Product 1', currentStock: 50 },
-          { id: 2, name: 'Product 2', currentStock: 30 },
-        ]);
+        const querySnapshot = await getDocs(collection(db, 'products'));
+        const productsList = querySnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data(),
+        }));
+        setProducts(productsList);
         setLoading(false);
       } catch (error) {
         console.error('Error fetching products:', error);
+        setError('Failed to load products.');
         setLoading(false);
       }
     };
 
     fetchProducts();
-  }, []);
+  }, [db]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setError(null); // Reset error state
+    setSuccessMessage(null); // Reset success message
+
     try {
-      // This would normally call your backend API
-      // await fetch('/api/stock-adjustments', {
-      //   method: 'POST',
-      //   body: JSON.stringify(formData)
-      // });
-      console.log('Stock adjustment:', formData);
-      
+      const { productId, quantity, adjustmentType, reason } = formData;
+      const productRef = doc(db, 'products', productId);
+
+      // Fetch the current product data using getDoc instead of getDocs
+      const productSnapshot = await getDoc(productRef);  // Using getDoc here
+
+      if (!productSnapshot.exists()) {
+        setError('Product not found!');
+        return;
+      }
+
+      const currentStock = productSnapshot.data().quantity;
+
+      // Calculate the new stock based on the adjustment type
+      const newStock = adjustmentType === 'add'
+        ? currentStock + parseInt(quantity, 10)
+        : currentStock - parseInt(quantity, 10);
+
+      // Ensure the new stock is valid
+      if (newStock < 0) {
+        setError('Stock cannot be negative!');
+        return;
+      }
+
+      // Update the stock in Firestore
+      await updateDoc(productRef, { quantity: newStock });
+
+      // Show success message
+      setSuccessMessage(`Successfully adjusted the stock of ${formData.productId}`);
+
       // Reset form
       setFormData({
         productId: '',
@@ -52,10 +84,11 @@ function StockAdjustments() {
         reason: ''
       });
 
-      // Navigate to inventory page after successful adjustment
+      // Navigate to inventory page after a successful adjustment
       navigate('/inventory');
     } catch (error) {
       console.error('Error submitting adjustment:', error);
+      setError('There was an error processing your stock adjustment. Please try again.');
     }
   };
 
@@ -76,6 +109,8 @@ function StockAdjustments() {
       <h1 className="text-2xl font-bold text-gray-900 mb-6">Stock Adjustments</h1>
 
       <form onSubmit={handleSubmit} className="bg-white shadow rounded-lg p-6 space-y-6">
+        {error && <div className="text-red-500 text-sm">{error}</div>}
+
         <div>
           <label className="block text-sm font-medium text-gray-700">Select Product</label>
           <select
@@ -88,7 +123,7 @@ function StockAdjustments() {
             <option value="">Select a product</option>
             {products.map(product => (
               <option key={product.id} value={product.id}>
-                {product.name} (Current Stock: {product.currentStock})
+                {product.name} (Current Stock: {product.quantity})
               </option>
             ))}
           </select>
@@ -142,6 +177,12 @@ function StockAdjustments() {
           </button>
         </div>
       </form>
+
+      {successMessage && (
+        <div className="mt-6 p-4 bg-green-100 border border-green-500 text-green-700 rounded-md">
+          {successMessage}
+        </div>
+      )}
     </div>
   );
 }
