@@ -9,6 +9,7 @@ function Inventory() {
 
   // Move isLowStock function before its usage
   const isLowStock = (quantity, reorderPoint) => quantity <= reorderPoint;
+  const [existingSkus, setExistingSkus] = useState([]);
 
   // Now we can use isLowStock in alertMessage
   const alertMessage = products
@@ -26,6 +27,8 @@ function Inventory() {
           ...doc.data(),
         }));
         setProducts(productsData);
+        const skus = productsData.map((products) => products.sku);
+        setExistingSkus(skus);
       } catch (error) {
         console.error('Error fetching products:', error);
       }
@@ -33,6 +36,11 @@ function Inventory() {
 
     fetchProducts();
   }, [db]);
+
+  //Use another useEffect to react to the change in `existingSkus`
+  useEffect(() => {
+    console.log(`existingSkus updated: ${existingSkus}`);
+}, [existingSkus]); // This runs whenever `existingSkus` changes
 
   // Utility to check if a value is a valid number
   const formatPrice = (price) => {
