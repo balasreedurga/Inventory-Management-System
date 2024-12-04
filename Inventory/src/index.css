@@ -33,11 +33,7 @@ body {
   place-items: center;
   min-width: 320px;
   min-height: 100vh;background-color:rgb(185, 174, 216) ;
-  background-image: url('/src/assets/bg7.jpeg');
-  background-size: cover;
-   background-position: center;
-   background-repeat: no-repeat;
-}
+ background-color: #1a1a1a;}
 
 h1 {
   font-size: 3.2em;

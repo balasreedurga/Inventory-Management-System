@@ -1,31 +1,33 @@
 .app-background {
-  background-image: url('/src/assets/Inventory.jpg');
+  /*background-image: url('https://images.unsplash.com/photo-1497864149936-d3163f0c0f4b?q=80&w=1469&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D');
   background-size: cover;
   background-position: center;
   background-attachment: fixed;
   min-height: 100vh;
-  position: relative;
+  position: relative;*/
+  background-color: #888;
 }
 
-.app-background::before {
+/*.app-background::before {
   content: '';
   position: absolute;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(255, 255, 255, 0.9); /* white overlay with 90% opacity */
+  background: rgba(255, 255, 255, 0.9); 
   z-index: 1;
 }
 
 .content-wrapper {
   position: relative;
-  z-index: 2; /* Place content above the overlay */
-}
+  z-index: 2;
+}*/
 #root {
   max-width: 1280px;
   margin: 0 auto;
   padding: 2rem;
+ padding-top: 0;
   text-align: center;
 }
 

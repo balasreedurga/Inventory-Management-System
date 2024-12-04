@@ -1,6 +1,135 @@
 import { useState, useEffect } from 'react';
-import { getFirestore, collection, getDocs, addDoc, updateDoc, doc } from 'firebase/firestore';
-import Table from '../components/Table';
+import styled from 'styled-components';
+import { FiTrash } from 'react-icons/fi';
+import { getFirestore, collection, getDocs, addDoc, updateDoc, doc, deleteDoc } from 'firebase/firestore';
+
+// Styled-components for the table
+const TableContainer = styled.div`
+  overflow-x-auto;
+  border-radius: 8px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  margin-top: 20px;
+`;
+
+const StyledTable = styled.table`
+  width: 100%;
+  border-collapse: collapse;
+  background-color: white;
+
+  thead {
+    background-color: #f9fafb;
+  }
+
+  th {
+    padding: 12px;
+    text-align: left;
+    font-size: 0.875rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    color: #4b5563;
+    border-bottom: 1px solid #e5e7eb;
+  }
+
+  tbody tr:nth-child(odd) {
+    background-color: #f3f4f6;
+  }
+
+  tbody tr:nth-child(even) {
+    background-color: #ffffff;
+  }
+
+  td {
+    padding: 12px;
+    font-size: 0.875rem;
+    color: #4b5563;
+    border-bottom: 1px solid #e5e7eb;
+
+    &.status-pending {
+      background-color: #fef3c7;
+      color: #92400e;
+    }
+
+    &.status-fulfilled {
+      background-color: #d1fae5;
+      color: #065f46;
+    }
+  }
+
+  td.actions button {
+    background-color: #3b82f6;
+    color: white;
+    border: none;
+    padding: 8px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+
+    &:hover {
+      background-color: #2563eb;
+    }
+
+    &.remove {
+      background-color: #ef4444;
+
+      &:hover {
+        background-color: #b91c1c;
+      }
+    }
+  }
+
+  /* For small screens */
+  @media (max-width: 768px) {
+    display: block;
+    width: 100%;
+
+    thead {
+      display: none; /* Hide header on small screens */
+    }
+
+    tbody {
+      display: block;
+      width: 100%;
+    }
+
+    tr {
+      display: block;
+      margin-bottom: 1.5rem;
+      border: 1px solid #e5e7eb;
+      padding: 1rem;
+      border-radius: 8px;
+    }
+
+    td {
+      display: block;
+      text-align: right;
+      position: relative;
+      padding-left: 50%;
+      border-bottom: none;
+      padding-top: 10px;
+
+      &::before {
+        content: attr(data-label);
+        position: absolute;
+        left: 10px;
+        top: 10px;
+        font-weight: bold;
+        text-transform: uppercase;
+        font-size: 0.875rem;
+        color: #4b5563;
+      }
+    }
+
+    td.actions {
+      text-align: left;
+      padding-top: 10px;
+    }
+
+    td.actions button {
+      width: 100%;
+      margin-top: 0.5rem;
+    }
+  }
+`;
 
 function Orders() {
   const db = getFirestore();
@@ -8,7 +137,7 @@ function Orders() {
   const [loading, setLoading] = useState(true);
   const [newOrder, setNewOrder] = useState({
     customer: '',
-    productNames: [],  // Array of {name, quantity}
+    products: [], // Changed to store an array of products and quantities
     total: 0,
     status: 'pending',
   });
@@ -16,7 +145,6 @@ function Orders() {
   const [filter, setFilter] = useState('all');
 
   useEffect(() => {
-    // Fetch orders from Firestore
     const fetchOrders = async () => {
       try {
         const ordersSnapshot = await getDocs(collection(db, 'orders'));
@@ -32,7 +160,6 @@ function Orders() {
       }
     };
 
-    // Fetch products for the manual order form
     const fetchProducts = async () => {
       try {
         const productsSnapshot = await getDocs(collection(db, 'products'));
@@ -52,43 +179,37 @@ function Orders() {
 
   const headers = ['Order ID', 'Date', 'Customer', 'Product Names', 'Total', 'Status', 'Actions'];
 
-  // Filter orders based on status
   const filteredOrders = filter === 'all'
     ? orders
     : orders.filter(order => order.status === filter);
 
-  // Handle adding a new order
   const handleAddOrder = async (e) => {
     e.preventDefault();
 
-    // Calculate the total price based on selected products and quantities
-    const total = newOrder.productNames.reduce((sum, item) => {
+    const total = newOrder.products.reduce((sum, item) => {
       const product = productList.find(p => p.name === item.name);
       return sum + (product ? product.price * item.quantity : 0);
     }, 0);
 
     const newOrderData = {
       customer: newOrder.customer,
-      productNames: newOrder.productNames.map(item => item.name),
+      productNames: newOrder.products.map(item => item.name),
       total: total.toFixed(2),
       status: newOrder.status,
       date: new Date().toISOString(),
     };
 
     try {
-      // Add new order to Firestore
       const orderRef = await addDoc(collection(db, 'orders'), newOrderData);
 
-      // Add new order to the local state
       setOrders([
         ...orders,
         { id: orderRef.id, ...newOrderData },
       ]);
 
-      // Reset form
       setNewOrder({
         customer: '',
-        productNames: [],
+        products: [],
         total: 0,
         status: 'pending',
       });
@@ -97,61 +218,62 @@ function Orders() {
     }
   };
 
-  // Handle adding products and quantities to the new order
-  const handleAddItemToOrder = (productName, quantity) => {
-    const newItem = { name: productName, quantity: parseInt(quantity, 10) };
-    setNewOrder(prevOrder => ({
-      ...prevOrder,
-      productNames: [...prevOrder.productNames, newItem],
-    }));
-  };
+  const handleProductQuantityChange = (name, quantity) => {
+    // Update the product quantity and recalculate the total price
+    const updatedProducts = newOrder.products.map((product) =>
+      product.name === name ? { ...product, quantity: Number(quantity) } : product
+    );
 
-  // Handle updating the total whenever items change
-  const handleTotalChange = () => {
-    const total = newOrder.productNames.reduce((sum, item) => {
+    const updatedTotal = updatedProducts.reduce((sum, item) => {
       const product = productList.find(p => p.name === item.name);
       return sum + (product ? product.price * item.quantity : 0);
     }, 0);
-    setNewOrder(prevOrder => ({ ...prevOrder, total: total.toFixed(2) }));
+
+    setNewOrder({
+      ...newOrder,
+      products: updatedProducts,
+      total: updatedTotal.toFixed(2),
+    });
   };
 
-  const handleQuantityChange = (productName, quantity) => {
-    setNewOrder(prevOrder => ({
-      ...prevOrder,
-      productNames: prevOrder.productNames.map(item =>
-        item.name === productName ? { ...item, quantity: parseInt(quantity, 10) } : item
-      ),
-    }));
-    handleTotalChange();
+  const handleAddItemToOrder = (productName, quantity) => {
+    const product = productList.find(p => p.name === productName);
+    if (product) {
+      const updatedProducts = [
+        ...newOrder.products,
+        { name: product.name, quantity: Number(quantity) }
+      ];
+
+      const updatedTotal = updatedProducts.reduce((sum, item) => {
+        const product = productList.find(p => p.name === item.name);
+        return sum + (product ? product.price * item.quantity : 0);
+      }, 0);
+
+      setNewOrder({ ...newOrder, products: updatedProducts, total: updatedTotal.toFixed(2) });
+    }
   };
 
-  // Handle Mark as Fulfilled Button Click
-  const handleMarkAsFulfilled = async (orderId, products) => {
+  const handleMarkAsFulfilled = async (orderId) => {
     try {
       const orderRef = doc(db, 'orders', orderId);
-
-      // Update the status of the order to 'fulfilled'
       await updateDoc(orderRef, { status: 'fulfilled' });
 
-      // 1. Update inventory for each product in the order
-      for (const item of products) {
-        const productRef = doc(db, 'products', item.id); // Get reference to product document
-        const product = productList.find(p => p.id === item.id);
-        const updatedQuantity = product.quantity - item.quantity;
-
-        if (updatedQuantity >= 0) {
-          await updateDoc(productRef, { quantity: updatedQuantity });
-        } else {
-          console.warn(`Not enough stock for ${product.name}`);
-        }
-      }
-
-      // Update the local state for orders
-      setOrders(orders.map(order => 
+      setOrders(orders.map(order =>
         order.id === orderId ? { ...order, status: 'fulfilled' } : order
       ));
     } catch (error) {
-      console.error('Error updating order status and inventory:', error);
+      console.error('Error updating order status:', error);
+    }
+  };
+
+  const handleRemoveOrder = async (orderId) => {
+    try {
+      const orderRef = doc(db, 'orders', orderId);
+      await deleteDoc(orderRef);
+
+      setOrders(orders.filter(order => order.id !== orderId));
+    } catch (error) {
+      console.error('Error removing order:', error);
     }
   };
 
@@ -171,31 +293,31 @@ function Orders() {
               type="text"
               value={newOrder.customer}
               onChange={(e) => setNewOrder({ ...newOrder, customer: e.target.value })}
-              className="mt-1 w-full p-2 border border-gray-300 rounded-md shadow-sm"
               required
+              className="w-full p-2 border border-gray-300 rounded-md"
             />
           </div>
-
-          {/* Product Selection */}
           <div>
-            <label className="block text-sm font-medium text-gray-700">Add Product</label>
+            <label className="block text-sm font-medium text-gray-700">Select Product</label>
             <select
-              onChange={(e) => handleAddItemToOrder(e.target.value, 1)} // Default quantity is 1
-              className="mt-1 w-full p-2 border border-gray-300 rounded-md shadow-sm"
+              onChange={(e) => handleAddItemToOrder(e.target.value, 1)}
+              className="w-full p-2 border border-gray-300 rounded-md"
             >
               <option value="">Select a Product</option>
               {productList.map(product => (
-                <option key={product.id} value={product.name}>{product.name} - ${product.price}</option>
+                <option key={product.id} value={product.name}>
+                  {product.name} - ${product.price}
+                </option>
               ))}
             </select>
           </div>
         </div>
 
-        {/* Items List */}
+        {/* Order Items List */}
         <div>
           <h3 className="text-lg font-medium text-gray-900">Order Items</h3>
           <div className="space-y-4 mt-4">
-            {newOrder.productNames.map((item, index) => {
+            {newOrder.products.map((item, index) => {
               const product = productList.find(p => p.name === item.name) || {};
               return (
                 <div key={index} className="flex justify-between items-center p-4 border border-gray-200 rounded-md">
@@ -203,7 +325,7 @@ function Orders() {
                   <input
                     type="number"
                     value={item.quantity}
-                    onChange={(e) => handleQuantityChange(item.name, e.target.value)}
+                    onChange={(e) => handleProductQuantityChange(item.name, e.target.value)}
                     className="w-20 p-2 border border-gray-300 rounded-md"
                   />
                   <span>${(product.price * item.quantity).toFixed(2)}</span>
@@ -235,46 +357,60 @@ function Orders() {
       </form>
 
       {/* Orders Table */}
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">Orders</h1>
-        <select
-          value={filter}
-          onChange={(e) => setFilter(e.target.value)}
-          className="rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 mt-4"
-        >
-          <option value="all">All Orders</option>
-          <option value="pending">Pending</option>
-          <option value="fulfilled">Fulfilled</option>
-        </select>
+      <h1 className="text-2xl font-bold text-gray-900">Orders</h1>
+      <select
+        value={filter}
+        onChange={(e) => setFilter(e.target.value)}
+        className="rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 mt-4"
+      >
+        <option value="all">All Orders</option>
+        <option value="pending">Pending</option>
+        <option value="fulfilled">Fulfilled</option>
+      </select>
 
-        <Table headers={headers}>
-          {filteredOrders.map((order) => {
-            const uniqueKey = `${(order.productNames && order.productNames.join('-')) || ''}-${order.customer}`;
-            return (
-              <tr key={uniqueKey}>
-                <td className="px-6 py-4 whitespace-nowrap">{order.id}</td>
-                <td className="px-6 py-4 whitespace-nowrap">{new Date(order.date).toLocaleString()}</td>
-                <td className="px-6 py-4 whitespace-nowrap">{order.customer}</td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  {order.productNames ? order.productNames.join(', ') : 'No products'}
+      <TableContainer>
+        <StyledTable>
+          <thead>
+            <tr>
+              {headers.map((header, index) => (
+                <th key={index}>{header}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {filteredOrders.map((order) => (
+              <tr key={order.id}>
+                <td data-label="Order ID">{order.id}</td>
+                <td data-label="Date">{new Date(order.date).toLocaleString()}</td>
+                <td data-label="Customer">{order.customer}</td>
+                <td data-label="Product Names">{order.productNames ? order.productNames.join(', ') : 'No products'}</td>
+                <td data-label="Total">${order.total}</td>
+                <td
+                  className={order.status === 'pending' ? 'status-pending' : 'status-fulfilled'}
+                  data-label="Status"
+                >
+                  {order.status}
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap">${order.total}</td>
-                <td className="px-6 py-4 whitespace-nowrap">{order.status}</td>
-                <td className="px-6 py-4 whitespace-nowrap">
+                <td className="actions" data-label="Actions">
                   {order.status === 'pending' && (
                     <button
-                      className="text-white bg-blue-600 py-1 px-3 rounded-md hover:bg-blue-700"
-                      onClick={() => handleMarkAsFulfilled(order.id, order.productNames)}
+                      onClick={() => handleMarkAsFulfilled(order.id)}
                     >
-                      Mark as Fulfilled
+                      Fulfill
                     </button>
                   )}
+                  <button
+                    className="remove"
+                    onClick={() => handleRemoveOrder(order.id)}
+                  >
+                    <FiTrash size={20} /> {/* Trash Icon */}
+                  </button>
                 </td>
               </tr>
-            );
-          })}
-        </Table>
-      </div>
+            ))}
+          </tbody>
+        </StyledTable>
+      </TableContainer>
     </div>
   );
 }

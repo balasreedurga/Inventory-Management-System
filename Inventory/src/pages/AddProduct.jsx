@@ -16,7 +16,7 @@ function AddProduct() {
   const [editMode, setEditMode] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState(null);
 
-  // Fetch products in real-time
+  // Fetch products from Firestore, sorted by name
   useEffect(() => {
     const unsubscribe = getProducts((data) => {
       setProducts(data);
@@ -108,11 +108,11 @@ function AddProduct() {
       };
 
       if (editMode) {
-        
         await updateProduct(formData.sku, updatedProductData);
         console.log("Product updated successfully!");
       } else {
-        await addProduct(updatedProductData);
+        const newProduct = { ...updatedProductData, lastOrdered: new Date().toISOString() };
+        await addProduct(newProduct);
         console.log("Product added successfully!");
       }
 
@@ -125,14 +125,21 @@ function AddProduct() {
   };
 
   return (
-    <div className="container mx-auto max-w-2xl">
+    <div className="container mx-auto max-w-3xl space-y-8 px-4 sm:px-6 md:px-8">
       <h1 className="text-2xl font-bold text-gray-900 mb-6">
         {editMode ? "Edit Product" : "Add New Product"}
       </h1>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
+      {/* Form Section */}
+      <form
+        onSubmit={handleSubmit}
+        className="space-y-6 p-6 bg-blue-50 rounded-lg shadow-md"
+      >
         <div>
-          <label htmlFor="name" className="block text-sm font-medium text-gray-700">
+          <label
+            htmlFor="name"
+            className="block text-sm font-medium text-gray-700"
+          >
             Product Name
           </label>
           <input
@@ -145,11 +152,16 @@ function AddProduct() {
               errors.name ? "border-red-500" : ""
             }`}
           />
-          {errors.name && <p className="mt-1 text-sm text-red-600">{errors.name}</p>}
+          {errors.name && (
+            <p className="mt-1 text-sm text-red-600">{errors.name}</p>
+          )}
         </div>
 
         <div>
-          <label htmlFor="sku" className="block text-sm font-medium text-gray-700">
+          <label
+            htmlFor="sku"
+            className="block text-sm font-medium text-gray-700"
+          >
             SKU
           </label>
           <input
@@ -162,11 +174,16 @@ function AddProduct() {
               errors.sku ? "border-red-500" : ""
             }`}
           />
-          {errors.sku && <p className="mt-1 text-sm text-red-600">{errors.sku}</p>}
+          {errors.sku && (
+            <p className="mt-1 text-sm text-red-600">{errors.sku}</p>
+          )}
         </div>
 
         <div>
-          <label htmlFor="price" className="block text-sm font-medium text-gray-700">
+          <label
+            htmlFor="price"
+            className="block text-sm font-medium text-gray-700"
+          >
             Price
           </label>
           <input
@@ -181,11 +198,16 @@ function AddProduct() {
               errors.price ? "border-red-500" : ""
             }`}
           />
-          {errors.price && <p className="mt-1 text-sm text-red-600">{errors.price}</p>}
+          {errors.price && (
+            <p className="mt-1 text-sm text-red-600">{errors.price}</p>
+          )}
         </div>
 
         <div>
-          <label htmlFor="quantity" className="block text-sm font-medium text-gray-700">
+          <label
+            htmlFor="quantity"
+            className="block text-sm font-medium text-gray-700"
+          >
             Quantity
           </label>
           <input
@@ -199,11 +221,16 @@ function AddProduct() {
               errors.quantity ? "border-red-500" : ""
             }`}
           />
-          {errors.quantity && <p className="mt-1 text-sm text-red-600">{errors.quantity}</p>}
+          {errors.quantity && (
+            <p className="mt-1 text-sm text-red-600">{errors.quantity}</p>
+          )}
         </div>
 
         <div>
-          <label htmlFor="reorderPoint" className="block text-sm font-medium text-gray-700">
+          <label
+            htmlFor="reorderPoint"
+            className="block text-sm font-medium text-gray-700"
+          >
             Reorder Point
           </label>
           <input
@@ -217,56 +244,61 @@ function AddProduct() {
               errors.reorderPoint ? "border-red-500" : ""
             }`}
           />
-          {errors.reorderPoint && <p className="mt-1 text-sm text-red-600">{errors.reorderPoint}</p>}
+          {errors.reorderPoint && (
+            <p className="mt-1 text-sm text-red-600">{errors.reorderPoint}</p>
+          )}
         </div>
 
-        <div className="flex justify-end">
-          <button
-            type="submit"
-            className={`bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 ${
-              isSubmitting ? "opacity-50 cursor-not-allowed" : ""
-            }`}
-            disabled={isSubmitting}
-          >
-            {isSubmitting
-              ? "Saving..."
-              : editMode
-              ? "Save Changes"
-              : "Add Product"}
-          </button>
-        </div>
+        <button
+          type="submit"
+          disabled={isSubmitting}
+          className="w-full py-2 px-4 bg-blue-600 text-white rounded-md disabled:bg-blue-400"
+        >
+          {isSubmitting ? "Saving..." : editMode ? "Update Product" : "Add Product"}
+        </button>
       </form>
 
-      {/* List of Products */}
-      <div className="mt-8">
-        <h2 className="text-xl font-bold text-gray-900">Products</h2>
-        <ul className="mt-4 space-y-4">
-          {products.map((product) => (
-            <li key={product.sku} className="p-4 border rounded-md">
-              <p>
-                <strong>Name:</strong> {product.name}
-              </p>
-              <p>
-                <strong>SKU:</strong> {product.sku}
-              </p>
-              <p>
-        <strong>Price:</strong> €{parseFloat(product.price).toFixed(2)}
-      </p>
-              <p>
-                <strong>Quantity:</strong> {product.quantity}
-              </p>
-              <p>
-                <strong>Reorder Point:</strong> {product.reorderPoint}
-              </p>
-              <button
-                onClick={() => handleEdit(product)}
-                className="mt-2 bg-green-600 text-white px-3 py-1 rounded-md hover:bg-green-700"
-              >
-                Edit
-              </button>
-            </li>
-          ))}
-        </ul>
+      {/* Product List Section */}
+      <div>
+        <h2 className="text-xl font-bold text-gray-900 mb-4">Product List</h2>
+        <div className="overflow-x-auto">
+          <table className="min-w-full table-auto bg-white border rounded-lg">
+            <thead>
+              <tr className="bg-blue-600 text-white">
+                <th className="px-4 py-2 sm:px-6 sm:py-4 text-sm font-bold">Name</th>
+                <th className="px-4 py-2 sm:px-6 sm:py-4 text-sm font-semibold">SKU</th>
+                <th className="px-4 py-2 sm:px-6 sm:py-4 text-sm font-semibold">Price</th>
+                <th className="px-4 py-2 sm:px-6 sm:py-4 text-sm font-semibold">Quantity</th>
+                <th className="px-4 py-2 sm:px-6 sm:py-4 text-sm font-semibold">Reorder Point</th>
+                <th className="px-4 py-2 sm:px-6 sm:py-4 text-sm font-semibold">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {products.map((product) => (
+                <tr
+                  key={product.sku}
+                  className={`border-b hover:bg-gray-50 ${
+                    product.lastOrdered ? "bg-yellow-100" : ""
+                  }`}
+                >
+                  <td className="px-4 py-2 sm:px-6 sm:py-4 font-bold">{product.name}</td>
+                  <td className="px-4 py-2 sm:px-6 sm:py-4 text-sm">{product.sku}</td>
+                  <td className="px-4 py-2 sm:px-6 sm:py-4 text-sm">€{parseFloat(product.price).toFixed(2)}</td>
+                  <td className="px-4 py-2 sm:px-6 sm:py-4 text-sm">{product.quantity}</td>
+                  <td className="px-4 py-2 sm:px-6 sm:py-4 text-sm">{product.reorderPoint}</td>
+                  <td className="px-4 py-2 sm:px-6 sm:py-4">
+                    <button
+                      onClick={() => handleEdit(product)}
+                      className="bg-green-600 text-white px-3 py-1 rounded-md hover:bg-green-700"
+                    >
+                      Edit
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );

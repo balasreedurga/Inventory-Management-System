@@ -1,16 +1,25 @@
-import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { getFirestore, collection, getDocs, doc, getDoc, updateDoc } from 'firebase/firestore';
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import {
+  getFirestore,
+  collection,
+  getDocs,
+  doc,
+  getDoc,
+  updateDoc,
+  addDoc,
+  Timestamp,  // Import Timestamp to add a proper timestamp to each adjustment
+} from "firebase/firestore";
 
 function StockAdjustments() {
   const navigate = useNavigate();
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [formData, setFormData] = useState({
-    productId: '',
-    quantity: '',
-    adjustmentType: 'add',
-    reason: ''
+    productId: "",
+    quantity: "",
+    adjustmentType: "add",
+    reason: "",
   });
 
   // Error and Success States
@@ -20,19 +29,20 @@ function StockAdjustments() {
   // Initialize Firestore
   const db = getFirestore();
 
+  // Fetch product data on component load
   useEffect(() => {
     const fetchProducts = async () => {
       try {
-        const querySnapshot = await getDocs(collection(db, 'products'));
-        const productsList = querySnapshot.docs.map(doc => ({
+        const querySnapshot = await getDocs(collection(db, "products"));
+        const productsList = querySnapshot.docs.map((doc) => ({
           id: doc.id,
           ...doc.data(),
         }));
         setProducts(productsList);
-        setLoading(false);
       } catch (error) {
-        console.error('Error fetching products:', error);
-        setError('Failed to load products.');
+        console.error("Error fetching products:", error);
+        setError("Failed to load products.");
+      } finally {
         setLoading(false);
       }
     };
@@ -43,65 +53,84 @@ function StockAdjustments() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError(null); // Reset error state
-    setSuccessMessage(null); // Reset success message
+    setSuccessMessage(null); // Reset success state
 
     try {
       const { productId, quantity, adjustmentType, reason } = formData;
-      const productRef = doc(db, 'products', productId);
 
-      // Fetch the current product data using getDoc instead of getDocs
-      const productSnapshot = await getDoc(productRef);  // Using getDoc here
+      if (!productId || !quantity || !reason) {
+        setError("All fields are required.");
+        return;
+      }
 
+      const productRef = doc(db, "products", productId);
+
+      // Fetch the current product data
+      const productSnapshot = await getDoc(productRef);
       if (!productSnapshot.exists()) {
-        setError('Product not found!');
+        setError("Selected product does not exist.");
         return;
       }
 
-      const currentStock = productSnapshot.data().quantity;
+      const productData = productSnapshot.data();
+      const currentStock = productData.quantity;
+      const productName = productData.name || "Unknown Product"; // Fallback if name is undefined
 
-      // Calculate the new stock based on the adjustment type
-      const newStock = adjustmentType === 'add'
-        ? currentStock + parseInt(quantity, 10)
-        : currentStock - parseInt(quantity, 10);
+      // Calculate new stock based on adjustment type
+      const adjustedQuantity = parseInt(quantity, 10);
+      const newStock =
+        adjustmentType === "add"
+          ? currentStock + adjustedQuantity
+          : currentStock - adjustedQuantity;
 
-      // Ensure the new stock is valid
       if (newStock < 0) {
-        setError('Stock cannot be negative!');
+        setError("Stock cannot be negative.");
         return;
       }
 
-      // Update the stock in Firestore
+      // Update product stock in Firestore
       await updateDoc(productRef, { quantity: newStock });
 
-      // Show success message
-      setSuccessMessage(`Successfully adjusted the stock of ${formData.productId}`);
+      // Log the stock adjustment to the `stockAdjustments` collection
+      await addDoc(collection(db, "stockAdjustments"), {
+        productId,
+        productName,
+        quantity: adjustedQuantity,
+        adjustmentType,
+        reason,
+        date: Timestamp.now(), // Store the current time
+      });
+
+      // Success message
+      const adjustmentAction =
+        adjustmentType === "add" ? "added to" : "removed from";
+      setSuccessMessage(
+        `Stock for "${productName}" was ${adjustedQuantity} ${adjustmentAction} successfully. New stock: ${newStock}.`
+      );
 
       // Reset form
       setFormData({
-        productId: '',
-        quantity: '',
-        adjustmentType: 'add',
-        reason: ''
+        productId: "",
+        quantity: "",
+        adjustmentType: "add",
+        reason: "",
       });
 
-      // Navigate to inventory page after a successful adjustment
-      navigate('/inventory');
+      // Optional: Navigate to inventory page
+      navigate("/inventory");
     } catch (error) {
-      console.error('Error submitting adjustment:', error);
-      setError('There was an error processing your stock adjustment. Please try again.');
+      console.error("Error adjusting stock:", error);
+      setError("An error occurred during stock adjustment. Please try again.");
     }
   };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
+    setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
   if (loading) {
-    return <div>Loading...</div>;
+    return <div>Loading products...</div>;
   }
 
   return (
@@ -110,10 +139,22 @@ function StockAdjustments() {
 
       <form onSubmit={handleSubmit} className="bg-white shadow rounded-lg p-6 space-y-6">
         {error && <div className="text-red-500 text-sm">{error}</div>}
+        {successMessage && (
+          <div className="text-green-700 bg-green-100 p-4 rounded-md border border-green-500">
+            {successMessage}
+          </div>
+        )}
 
+        {/* Select Product */}
         <div>
-          <label className="block text-sm font-medium text-gray-700">Select Product</label>
+          <label
+            htmlFor="productId"
+            className="block text-sm font-medium text-gray-700 bg-green-100"
+          >
+            Select Product
+          </label>
           <select
+            id="productId"
             name="productId"
             value={formData.productId}
             onChange={handleChange}
@@ -121,7 +162,7 @@ function StockAdjustments() {
             required
           >
             <option value="">Select a product</option>
-            {products.map(product => (
+            {products.map((product) => (
               <option key={product.id} value={product.id}>
                 {product.name} (Current Stock: {product.quantity})
               </option>
@@ -129,9 +170,16 @@ function StockAdjustments() {
           </select>
         </div>
 
+        {/* Adjustment Type */}
         <div>
-          <label className="block text-sm font-medium text-gray-700">Adjustment Type</label>
+          <label
+            htmlFor="adjustmentType"
+            className="block text-sm font-medium text-gray-700 bg-green-100"
+          >
+            Adjustment Type
+          </label>
           <select
+            id="adjustmentType"
             name="adjustmentType"
             value={formData.adjustmentType}
             onChange={handleChange}
@@ -143,9 +191,16 @@ function StockAdjustments() {
           </select>
         </div>
 
+        {/* Quantity */}
         <div>
-          <label className="block text-sm font-medium text-gray-700">Quantity</label>
+          <label
+            htmlFor="quantity"
+            className="block text-sm font-medium text-gray-700 bg-green-100"
+          >
+            Quantity
+          </label>
           <input
+            id="quantity"
             type="number"
             name="quantity"
             value={formData.quantity}
@@ -156,18 +211,26 @@ function StockAdjustments() {
           />
         </div>
 
+        {/* Reason */}
         <div>
-          <label className="block text-sm font-medium text-gray-700">Reason</label>
+          <label
+            htmlFor="reason"
+            className="block text-sm font-medium text-gray-700 bg-green-100"
+          >
+            Reason
+          </label>
           <textarea
+            id="reason"
             name="reason"
             value={formData.reason}
             onChange={handleChange}
             rows="3"
-            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 bg-yellow-200"
             required
           ></textarea>
         </div>
 
+        {/* Submit Button */}
         <div className="flex justify-end">
           <button
             type="submit"
@@ -177,12 +240,6 @@ function StockAdjustments() {
           </button>
         </div>
       </form>
-
-      {successMessage && (
-        <div className="mt-6 p-4 bg-green-100 border border-green-500 text-green-700 rounded-md">
-          {successMessage}
-        </div>
-      )}
     </div>
   );
 }

@@ -7,6 +7,7 @@ import {
   onSnapshot,
   getDoc,
   getFirestore,
+  query, orderBy ,
 } from "firebase/firestore";
 
 
@@ -48,23 +49,28 @@ export const updateProduct = async (sku, updatedProductData) => {
   }
 };
 
-// Get all products with real-time updates
+
+// Get all products with real-time updates, sorted by 'name'
 export const getProducts = (callback) => {
   try {
     const productsCollection = collection(db, PRODUCTS_COLLECTION);
-    const unsubscribe = onSnapshot(productsCollection, (snapshot) => {
+    const queryRef = query(productsCollection, orderBy("name")); // Sorting by 'name'
+
+    const unsubscribe = onSnapshot(queryRef, (snapshot) => {
       const productsList = snapshot.docs.map((doc) => ({
         id: doc.id,
         ...doc.data(),
       }));
       callback(productsList);
     });
+
     return unsubscribe;
   } catch (error) {
     console.error("Error fetching products:", error.message);
     return () => {};
   }
 };
+
 
 
 // Function to update the product quantity in Firestore
