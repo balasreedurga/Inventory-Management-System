@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import { FiTrash } from 'react-icons/fi';
-import { getFirestore, collection, getDocs, addDoc, updateDoc, doc, deleteDoc } from 'firebase/firestore';
+import { getFirestore, collection, getDocs, addDoc, updateDoc, where,doc, deleteDoc,query} from 'firebase/firestore';
 
 // Styled-components for the table
 const TableContainer = styled.div`
@@ -253,19 +253,59 @@ function Orders() {
     }
   };
 
-  const handleMarkAsFulfilled = async (orderId) => {
-    try {
-      const orderRef = doc(db, 'orders', orderId);
-      await updateDoc(orderRef, { status: 'fulfilled' });
-
-      setOrders(orders.map(order =>
-        order.id === orderId ? { ...order, status: 'fulfilled' } : order
-      ));
-    } catch (error) {
-      console.error('Error updating order status:', error);
+ // Handle order fulfillment
+const handleMarkAsFulfilled = async (orderId) => {
+  try {
+    const order = orders.find((order) => order.id === orderId);
+    if (!order || !Array.isArray(order.productNames)) {
+      console.error(`Order ${orderId} does not have a valid productNames array.`);
+      return;
     }
-  };
 
+    for (const productName of order.productNames) {
+      // Query products collection where 'name' is equal to the product name
+      const productQuery = query(
+        collection(db, 'products'),
+        where('name', '==', productName)
+      );
+      
+      const productSnapshot = await getDocs(productQuery);
+
+      if (productSnapshot.empty) {
+        console.error(`Product not found: ${productName}`);
+        continue;  // Skip this product and continue with the next one
+      }
+
+      const productData = productSnapshot.docs[0].data();
+      const updatedQuantity = productData.quantity - 1;
+      console.log('Updated Quantity:', updatedQuantity);
+
+      // Check if stock is sufficient
+      if (updatedQuantity < 0) {
+        throw new Error(`Not enough stock for product ${productName}`);
+      }
+
+      // Update product quantity in Firestore
+      const productRef = doc(db, 'products', productSnapshot.docs[0].id);
+      await updateDoc(productRef, { quantity: updatedQuantity });
+    }
+
+    // Update order status to 'fulfilled'
+    const orderRef = doc(db, 'orders', orderId);
+    await updateDoc(orderRef, { status: 'fulfilled' });
+
+    // Update the order list in state
+    setOrders(orders.map(order =>
+      order.id === orderId ? { ...order, status: 'fulfilled' } : order
+    ));
+
+    console.log("Order fulfilled and product stock updated");
+  } catch (error) {
+    console.error('Error fulfilling order:', error);
+  }
+};
+  
+  
   const handleRemoveOrder = async (orderId) => {
     try {
       const orderRef = doc(db, 'orders', orderId);
@@ -384,7 +424,7 @@ function Orders() {
                 <td data-label="Date">{new Date(order.date).toLocaleString()}</td>
                 <td data-label="Customer">{order.customer}</td>
                 <td data-label="Product Names">{order.productNames ? order.productNames.join(', ') : 'No products'}</td>
-                <td data-label="Total">${order.total}</td>
+                <td data-label="Total">€{order.total}</td>
                 <td
                   className={order.status === 'pending' ? 'status-pending' : 'status-fulfilled'}
                   data-label="Status"
